@@ -106,37 +106,53 @@ final_data.to_excel(output_file, index=False)
 
 print("Data exported to:", output_file)
 
-# Create the root element for the XML with a default namespace
+# Define the namespace
 ns = "http://www.sec.gov/edgar/document/thirteenf/informationtable"
-root = ET.Element("informationTable", xmlns=ns)
 
-# Create the main infoTable element
-info_table = ET.SubElement(root, "infoTable")
+# Custom function to apply indentation to ElementTree
+def indent(elem, level=0):
+    i = "\n" + level * "    "
+    if len(elem):
+        if not elem.text or not elem.text.strip():
+            elem.text = i + "    "
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+        for elem in elem:
+            indent(elem, level + 1)
+        if not elem.tail or not elem.tail.strip():
+            elem.tail = i
+    else:
+        if level and (not elem.tail or not elem.tail.strip()):
+            elem.tail = i
+
+# Create the root element for the XML with the namespace
+root = ET.Element("ns1:informationTable")
+root.set("xmlns:ns1", ns)  # Set the xmlns:ns1 attribute manually
 
 # Iterate through the rows of the 'final_data' DataFrame
 for index, row in final_data.iterrows():
     # Create an infoTableEntry element for each row
-    info_table_entry = ET.SubElement(info_table, "infoTableEntry")
+    info_table_entry=ET.SubElement(root, "ns1:infoTable")
 
     # Add sub-elements to the 'infoTableEntry' element based on column values
-    ET.SubElement(info_table_entry, "nameOfIssuer").text = row["Name of Issuer"]
-    ET.SubElement(info_table_entry, "titleOfClass").text = row["Title of Class"]
-    ET.SubElement(info_table_entry, "cusip").text = row["CUSIP"]
-    ET.SubElement(info_table_entry, "value").text = str(int(row["Aggregate Value"]))
+    ET.SubElement(info_table_entry, "ns1:nameOfIssuer").text = row["Name of Issuer"]
+    ET.SubElement(info_table_entry, "ns1:titleOfClass").text = row["Title of Class"]
+    ET.SubElement(info_table_entry, "ns1:cusip").text = row["CUSIP"]
+    ET.SubElement(info_table_entry, "ns1:value").text = str(int(row["Aggregate Value"]))
 
     # Create shrsOrPrnAmt element and add sub-elements for sshPrnamt and sshPrnamtType
-    shrs_or_prn_amt = ET.SubElement(info_table_entry, "shrsOrPrnAmt")
-    ET.SubElement(shrs_or_prn_amt, "sshPrnamt").text = str(int(row["Number of Shares"]))
-    ET.SubElement(shrs_or_prn_amt, "sshPrnamtType").text = row["Shares/Principal"]
+    shrs_or_prn_amt = ET.SubElement(info_table_entry, "ns1:shrsOrPrnAmt")
+    ET.SubElement(shrs_or_prn_amt, "ns1:sshPrnamt").text = str(int(row["Number of Shares"]))
+    ET.SubElement(shrs_or_prn_amt, "ns1:sshPrnamtType").text = row["Shares/Principal"]
 
-    ET.SubElement(info_table_entry, "investmentDiscretion").text = row["Investment Discretion"]
-    ET.SubElement(info_table_entry, "otherManager").text = str(int(row["Other Managers"]))
+    ET.SubElement(info_table_entry, "ns1:investmentDiscretion").text = row["Investment Discretion"]
+    ET.SubElement(info_table_entry, "ns1:otherManager").text = str(int(row["Other Managers"]))
 
     # Create votingAuthority element and add sub-elements for Sole, Shared, and None
-    voting_authority = ET.SubElement(info_table_entry, "votingAuthority")
-    ET.SubElement(voting_authority, "Sole").text = str(int(row["Sole"]))
-    ET.SubElement(voting_authority, "Shared").text = str(int(row["Shared"]))
-    ET.SubElement(voting_authority, "None").text = str(int(row["None"]))
+    voting_authority = ET.SubElement(info_table_entry, "ns1:votingAuthority")
+    ET.SubElement(voting_authority, "ns1:Sole").text = str(int(row["Sole"]))
+    ET.SubElement(voting_authority, "ns1:Shared").text = str(int(row["Shared"]))
+    ET.SubElement(voting_authority, "ns1:None").text = str(int(row["None"]))
 
 # Create the XML tree
 tree = ET.ElementTree(root)
@@ -147,11 +163,13 @@ current_year = datetime.now().strftime("%Y")
 
 # Format the filename
 xml_output_file = f"SECForm13F_{current_month}-{current_year}.xml"
-with open(xml_output_file, "w", encoding="utf-8") as f:
+with open(xml_output_file, "wb") as f:  # Open in binary mode
     # Custom XML declaration with standalone attribute
     xml_declaration = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'
-    f.write(xml_declaration)
-    # Write the tree to the file
-    tree.write(f, encoding="unicode")
+    f.write(xml_declaration.encode('utf-8'))
+    
+    # Apply indentation and write the tree to the file
+    indent(root)
+    tree.write(f, encoding="utf-8", xml_declaration=False, short_empty_elements=False)
 
 print("XML data exported to:", xml_output_file)
