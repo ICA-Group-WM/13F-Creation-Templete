@@ -100,6 +100,16 @@ selected_columns = [
 
 # Extract the desired columns from the merged data
 final_data = merged_data[selected_columns]
+
+# List of forbidden characters
+forbidden_chars = ['+'] #Add more characters later
+
+# Remove forbidden characters from the 'final_data' DataFrame
+for col in final_data.columns:
+    if final_data[col].dtype == 'object':  # Process only object (string) columns
+        for char in forbidden_chars:
+            final_data[col] = final_data[col].str.replace(char, '')
+
 # Write combined and cleaned data to a new CSV file
 output_file = 'LPL_and_Schwab_conjoined_13F.xlsx'
 final_data.to_excel(output_file, index=False)
